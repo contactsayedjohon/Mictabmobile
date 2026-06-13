@@ -32,7 +32,11 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
 
       - name: Restore Debug Keystore
         run: |
@@ -43,11 +47,8 @@ jobs:
             echo "Warning: debug.keystore.base64 not found. Gradle will generate a default one, but custom debug configurations might fail if they require a specific key."
           fi
 
-      - name: Grant Execute Permission to Gradlew
-        run: chmod +x gradlew
-
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: gradle assembleDebug --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
