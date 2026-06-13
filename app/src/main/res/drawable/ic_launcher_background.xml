@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Squircle base metallic plate matching the user's uploaded design -->
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="108"
+                android:endY="108"
+                android:type="linear">
+                <!-- Premium Brushed Steel Gradient -->
+                <item android:color="#F0F0F2" android:offset="0.0" />
+                <item android:color="#C4C6C9" android:offset="0.25" />
+                <item android:color="#8A8C90" android:offset="0.6" />
+                <item android:color="#515356" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    
+    <!-- Soft inner metallic drop-shadow frame -->
+    <path
+        android:strokeWidth="1.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.3"
+        android:pathData="M 8,8 L 100,8 L 100,100 L 8,100 Z" />
+</vector>

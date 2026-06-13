@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">MicTab</string>
+    <string name="accessibility_service_description">MicTab requires this service to detect when you are typing, allowing it to show a floating microphone button for voice dictation and to paste polished text back into the input field.</string>
+</resources>
