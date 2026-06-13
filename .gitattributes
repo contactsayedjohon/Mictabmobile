@@ -1,0 +1,21 @@
+# Handle line endings automatically for files detected as text
+# and leave all other files alone.
+* text=auto
+
+# Declare files that will always have LF line endings on checkout.
+# This is crucial for Unix shell scripts.
+gradlew text eol=lf
+
+# Declare files that will always have CRLF line endings on checkout.
+# This is crucial for Windows batch scripts.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Denote all files that are truly binary and should not be modified.
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
