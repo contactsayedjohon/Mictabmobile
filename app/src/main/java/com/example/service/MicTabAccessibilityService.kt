@@ -47,6 +47,26 @@ class MicTabAccessibilityService : AccessibilityService() {
         createFloatingWidget()
     }
 
+    private fun getActiveInputNode(): AccessibilityNodeInfo? {
+        val nodeFromFocus = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        if (nodeFromFocus != null && nodeFromFocus.isEditable) {
+            currentFocusedNode = nodeFromFocus
+            return nodeFromFocus
+        }
+        
+        val cached = currentFocusedNode
+        if (cached != null) {
+            try {
+                if (cached.isEditable && cached.refresh()) {
+                    return cached
+                }
+            } catch (e: Exception) {
+                currentFocusedNode = null
+            }
+        }
+        return null
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (floatingView == null) {
             createFloatingWidget() // Try creating it again if it failed previously
@@ -56,8 +76,6 @@ class MicTabAccessibilityService : AccessibilityService() {
             val node = event.source
             if (node != null && node.isEditable) {
                 currentFocusedNode = node
-            } else {
-                currentFocusedNode = null
             }
         }
         
@@ -65,8 +83,27 @@ class MicTabAccessibilityService : AccessibilityService() {
     }
 
     private fun checkStateAndToggleWidget() {
-        if (currentFocusedNode != null && isKeyboardShowing()) {
-            showFloatingWidget()
+        if (floatingView == null) return
+        val sharedPref = getSharedPreferences("mictab_prefs", Context.MODE_PRIVATE)
+        val hideOnTyping = sharedPref.getBoolean("pref_hide_floating_typing", false)
+        
+        val isInputActive = getActiveInputNode() != null
+        val isKeyboardActive = isKeyboardShowing()
+
+        if (isInputActive) {
+            if (hideOnTyping) {
+                if (isKeyboardActive) {
+                    hideFloatingWidget()
+                } else {
+                    showFloatingWidget()
+                }
+            } else {
+                if (isKeyboardActive) {
+                    showFloatingWidget()
+                } else {
+                    hideFloatingWidget()
+                }
+            }
         } else {
             hideFloatingWidget()
         }
@@ -141,9 +178,14 @@ class MicTabAccessibilityService : AccessibilityService() {
 
                     if (Xdiff < 10 && Ydiff < 10) {
                         val clickTime = System.currentTimeMillis()
-                        if (clickTime - lastClickTime < 300) {
-                            // Double tap or Triple tap logic could go here
-                            performAction()
+                        if (clickTime - lastClickTime < 350) {
+                            val sharedPref = getSharedPreferences("mictab_prefs", Context.MODE_PRIVATE)
+                            val isPolishEnabled = sharedPref.getBoolean("pref_triple_tap_polish", true)
+                            if (isPolishEnabled) {
+                                performAction()
+                            } else {
+                                Toast.makeText(this@MicTabAccessibilityService, "Polishing is disabled in Settings", Toast.LENGTH_SHORT).show()
+                            }
                         } else {
                             toggleRecording()
                         }
@@ -176,7 +218,7 @@ class MicTabAccessibilityService : AccessibilityService() {
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 layoutFlag,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.CENTER_VERTICAL or Gravity.END
@@ -267,11 +309,19 @@ class MicTabAccessibilityService : AccessibilityService() {
             }
 
             try {
-                val requestBody = MultipartBody.Builder()
+                val sharedPref = getSharedPreferences("mictab_prefs", Context.MODE_PRIVATE)
+                val selectedLangCode = sharedPref.getString("stt_language_code", "") ?: ""
+
+                val requestBodyBuilder = MultipartBody.Builder()
                     .setType(MultipartBody.FORM)
                     .addFormDataPart("file", fileToUpload.name, fileToUpload.asRequestBody("audio/m4a".toMediaType()))
                     .addFormDataPart("model", activeConfig.modelName)
-                    .build()
+
+                if (selectedLangCode.isNotEmpty()) {
+                    requestBodyBuilder.addFormDataPart("language", selectedLangCode)
+                }
+
+                val requestBody = requestBodyBuilder.build()
 
                 val request = Request.Builder()
                     .url(activeConfig.baseUrl.trimEnd('/') + "/audio/transcriptions")
@@ -381,20 +431,22 @@ class MicTabAccessibilityService : AccessibilityService() {
     }
 
     private fun replaceTextInFocusedNode(text: String) {
-        if (currentFocusedNode != null) {
+        val targetNode = getActiveInputNode()
+        if (targetNode != null) {
             val arguments = android.os.Bundle()
             arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
-            currentFocusedNode?.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+            targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
         }
     }
 
     private fun pasteTextIntoFocusedNode(text: String) {
-        if (currentFocusedNode != null) {
+        val targetNode = getActiveInputNode()
+        if (targetNode != null) {
             val arguments = android.os.Bundle()
-            val currentText = currentFocusedNode?.text?.toString() ?: ""
+            val currentText = targetNode.text?.toString() ?: ""
             val newText = if (currentText.isEmpty()) text.trimStart() else currentText + text
             arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, newText)
-            currentFocusedNode?.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+            targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
         }
     }
 
